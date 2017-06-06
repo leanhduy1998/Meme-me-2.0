@@ -8,7 +8,7 @@
 
 import UIKit
 
-class TableViewController: UITableViewController {
+class TableViewController: UITableViewController, UITextFieldDelegate {
     private let appDelegate = UIApplication.shared.delegate as! AppDelegate
     private var currentMeme: Meme!
     override func viewDidLoad() {
@@ -28,10 +28,11 @@ class TableViewController: UITableViewController {
     }
 
     
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> TableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as? TableViewCell
         let meme = appDelegate.memes[indexPath.row]
-        cell.imageView?.image = meme.memedImage
+        
+        cell?.memeIV.image = meme.originalImage
         
         var topIndex: String.Index!
         var bottomIndex: String.Index!
@@ -51,9 +52,20 @@ class TableViewController: UITableViewController {
             let startIndexTemp = meme.bottomText.characters.count - 6  
             bottomIndex = meme.bottomText.index(meme.bottomText.startIndex, offsetBy: startIndexTemp)
         }
-        
-        cell.textLabel?.text = meme.topText.substring(to: topIndex) + " ... " + meme.bottomText.substring(from: bottomIndex)
-        return cell
+        cell?.titleTF.text = meme.topText.substring(to: topIndex) + " ... " + meme.bottomText.substring(from: bottomIndex)
+        configure((cell?.topTf)!, defaultText: meme.topText)
+        configure((cell?.bottomTF)!, defaultText: meme.bottomText)
+        return cell!
+    }
+    func configure(_ label: UILabel, defaultText: String) {
+        let memeTextAttributes:[String:Any] = [
+            NSStrokeColorAttributeName: UIColor.black,
+            NSForegroundColorAttributeName: UIColor.white,
+            NSFontAttributeName: UIFont(name: "HelveticaNeue-CondensedBlack", size: 12)!,
+            NSStrokeWidthAttributeName: -1.0]
+        let myString = NSMutableAttributedString(string: defaultText, attributes: memeTextAttributes )
+        label.sizeToFit()
+        label.attributedText = myString
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         currentMeme = appDelegate.memes[indexPath.row]
