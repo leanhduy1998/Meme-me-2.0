@@ -16,9 +16,14 @@ class MemeEditorViewController: UIViewController {
     @IBOutlet weak var bottomToolbar: UIToolbar!
     
     @IBOutlet weak var shareBtn: UIBarButtonItem!
-    @IBOutlet weak var discardBtn: UIBarButtonItem!
     @IBOutlet weak var takePicBtn: UIBarButtonItem!
 
+    var updatedY = CGFloat()
+    
+    override func viewDidLoad() {
+        self.tabBarController?.tabBar.isHidden = true
+    }
+    
     override func viewWillAppear(_ animated: Bool) {
         configure(topTF, defaultText: "Top text placeholder")
         configure(bottomTF, defaultText: "Botton text placeholder")
@@ -26,9 +31,10 @@ class MemeEditorViewController: UIViewController {
         subscribeToKeyboardNotifications()
         
         shareBtn.isEnabled = false
-        discardBtn.isEnabled = false
         
         takePicBtn.isEnabled = UIImagePickerController.isSourceTypeAvailable(.camera)
+        
+        updatedY = view.frame.origin.y - self.memeIV.frame.origin.y
         super.viewWillAppear(animated)
     }
     
@@ -52,6 +58,9 @@ class MemeEditorViewController: UIViewController {
         unsubscribeFromKeyboardNotifications()
         
     }
+    @IBAction func cancelBtnPressed(_ sender: Any) {
+        dismiss(animated: true, completion: nil)
+    }
     @IBAction func choosePictureBtnPressed(_ sender: Any) {
         showImagePickerVC(source: "photo library")
     }
@@ -63,29 +72,15 @@ class MemeEditorViewController: UIViewController {
         controller.completionWithItemsHandler = { (activity, completed, items, error) in
             
             if (completed) {
-                
-                print("")
-                print("In MemeEditorViewController -> shareMeme() -> returning from successful \"sharing\"...")
-                
                 self.save()
-                
+                self.dismiss(animated: true, completion: nil)
             }
             else {
-                
-                print("")
-                print("In MemeEditorViewController -> shareMeme() -> returning from cancelled \"sharing\"...")
-                
             }
             
         }
     }
-    @IBAction func discardBtnPressed(_ sender: Any) {
-        shareBtn.isEnabled = false
-        discardBtn.isEnabled = false
-        memeIV.image=nil
-        topTF.text = ""
-        bottomTF.text = ""
-    }
+
     
     
     
@@ -95,7 +90,6 @@ class MemeEditorViewController: UIViewController {
             memeIV.image = image
             dismiss(animated: true, completion: {
                 self.shareBtn.isEnabled = true
-                self.discardBtn.isEnabled = true
             })
             
         }
@@ -105,8 +99,7 @@ class MemeEditorViewController: UIViewController {
         textField.text = ""
     }
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        topTF.resignFirstResponder()
-        bottomTF.resignFirstResponder()
+        textField.resignFirstResponder()
         return true
     }
     func keyboardWillShow(_ notification:Notification) {
@@ -127,7 +120,7 @@ class MemeEditorViewController: UIViewController {
     func subscribeToKeyboardNotifications() {
         
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: .UIKeyboardWillShow, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: .UIKeyboardDidHide, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: .UIKeyboardWillHide, object: nil)
         
     }
     
@@ -138,8 +131,9 @@ class MemeEditorViewController: UIViewController {
     
     func save () {
         // Create the meme
+        let applicationDelegate = (UIApplication.shared.delegate as! AppDelegate)
         let meme = Meme(topText: topTF.text, bottomText: bottomTF.text!, originalImage: memeIV.image!, memedImage: generateMemedImage())
-        
+        applicationDelegate.memes.append(meme)
     }
     
     func generateMemedImage() -> UIImage {
@@ -148,14 +142,29 @@ class MemeEditorViewController: UIViewController {
         hideToolbars(boo: true)
         
         // Render view to an image
-        UIGraphicsBeginImageContext(self.view.frame.size)
+        
+        if UIDevice.current.orientation == UIDeviceOrientation.landscapeLeft || UIDevice.current.orientation == UIDeviceOrientation.landscapeRight {
+            memeIV.frame.origin.y += updatedY / 2
+            topTF.frame.origin.y += updatedY/2
+            bottomTF.frame.origin.y += updatedY/2
+            
+        } else {
+            memeIV.frame.origin.y += updatedY/2
+            topTF.frame.origin.y += updatedY/2
+            bottomTF.frame.origin.y += updatedY/2
+        }
+        
+        UIGraphicsBeginImageContextWithOptions(memeIV.frame.size, false, 1.0)
         view.drawHierarchy(in: self.view.frame, afterScreenUpdates: true)
-        let memedImage:UIImage = UIGraphicsGetImageFromCurrentImageContext()!
+        
+        let memedImage: UIImage = UIGraphicsGetImageFromCurrentImageContext()!
         UIGraphicsEndImageContext()
         
         self.navigationController?.isNavigationBarHidden = false
         hideToolbars(boo: false)
+
         
+  
         return memedImage
     }
     func hideToolbars(boo: Bool){
